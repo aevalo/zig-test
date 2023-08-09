@@ -2,29 +2,46 @@ const std = @import("std");
 
 pub fn build(b: *std.build.Builder) void {
     const target = b.standardTargetOptions(.{});
-    const mode = b.standardReleaseOptions();
+    const optimize = b.standardOptimizeOption(.{});
 
-    const table_helper = b.addModule("table-helper", .{ .source_file = .{ .path = "libs/table-helper/table-helper.zig" } });
+    const table_helper = b.createModule(.{
+        .source_file = .{ .path = "libs/table-helper/table-helper.zig" }
+    });
 
-    const exe = b.addExecutable("modules", "src/main.zig");
+    // Zig package
+    // pub const my_pkg = std.build.Pkg{
+    //     .name = "earcut",
+    //     .source = .{ .path = "src/main.zig" },
+    // };
+
+    // Zig module
+    // const my_module = b.createModule(.{
+    //     .source_file = .{ .path = "src/main.zig" },
+    //     .dependencies = &.{
+    //         .{ .name = "core", .module = core.module(b) },
+    //         .{ .name = "ecs", .module = ecs.module(b) },
+    //         .{ .name = "sysaudio", .module = sysaudio.module(b) },
+    //     },
+    // });
+
+    const exe = b.addExecutable(.{
+        .name = "modules",
+        .root_source_file = .{ .path = "src/main.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
     exe.addModule("table-helper", table_helper);
-    exe.setTarget(target);
-    exe.setBuildMode(mode);
-    exe.install();
+    b.installArtifact(exe);
+    _ = b.addRunArtifact(exe);
 
-    const run_cmd = exe.run();
-    run_cmd.step.dependOn(b.getInstallStep());
-    if (b.args) |args| {
-        run_cmd.addArgs(args);
-    }
-
-    const run_step = b.step("run", "Run the app");
-    run_step.dependOn(&run_cmd.step);
-
-    const exe_tests = b.addTest("src/main.zig");
-    exe_tests.setTarget(target);
-    exe_tests.setBuildMode(mode);
+    const exe_tests = b.addTest(.{
+        .name = "modules unit tests",
+        .root_source_file = .{ .path = "src/main.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
 
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&exe_tests.step);
+    _ = b.addRunArtifact(exe_tests);
 }
